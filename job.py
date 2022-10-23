@@ -1,18 +1,19 @@
-import logging
+import datetime as dt
+import logging.config
 from datetime import datetime
 from queue import Queue
-
 from threading import Timer
-import datetime as dt
-from typing import Union, Callable
-from tools import KThread, JobException, result_decorator
+from typing import Callable, Union
 
-logging.basicConfig(
-    level=logging.INFO,
-    filemode='w',
-    datefmt='%H:%M:%S',
-    format='%(asctime)s: %(name)s - %(levelname)s - %(message)s'
-)
+import yaml
+
+from enums import JobStatus
+from tools import JobException, KThread, result_decorator
+
+
+with open('logging_config.yaml', 'r') as f:
+    config = yaml.safe_load(f.read())
+    logging.config.dictConfig(config)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class Job:
         self.result_queue = Queue()
         self.do_func = result_decorator(self.result_queue)(self.do_func)
         self.name = next(NAME_GEN)
-        self._status = 'created'
+        self._status = JobStatus.CREATED
         self.dependencies = dependencies
         self._timer = None
 
@@ -97,10 +98,8 @@ class Job:
             start_time = now.replace(hour=hour, minute=minute)
             if start_time < now:
                 return start_time + dt.timedelta(days=1)
-            else:
-                return start_time
-        else:
-            return datetime.now()
+            return start_time
+        return datetime.now()
 
     def do_func(self, *args, **kwargs):
         return self.target(*args, **kwargs)
@@ -108,24 +107,24 @@ class Job:
     def _set_final_status(self) -> None:
         result = self.result_queue.get()
         if isinstance(result, JobException):
-            self.status = 'raised_exception'
+            self.status = JobStatus.RAISED_EXCEPTION
             logger.error(
-                'exception "%s" in %s' % (result, self.name)
+                f'exception "{result}" in {self.name}'
             )
             if self._timer:
                 self._timer.cancel()
         else:
             self.result_queue.put(result)
-            self.status = 'done'
+            self.status = JobStatus.DONE
             if self._timer:
                 self._timer.cancel()
 
     def terminate_job(self) -> None:
         if self.result_queue.empty() and self.thread.is_alive():
             self.thread.kill()
-            self.status = 'terminated'
+            self.status = JobStatus.TERMINATED
             logger.info(
-                'Status of job has changed : %s, %s' % (self.name, self._status)
+                f'Status of job has changed : {self.name}, {self._status}'
             )
         else:
             self._set_final_status()
@@ -134,19 +133,19 @@ class Job:
         if not self.result_queue.empty() and not self.thread.is_alive():
             self._set_final_status()
         logger.info(
-            'Stop running of %s' % self.name
+            f'Stop running of {self.name}'
         )
         self.thread.kill()
 
     @property
-    def status(self) -> str:
+    def status(self) -> JobStatus:
         if self._status not in [
-            'terminated',
-            'done',
-            'raised_exception'
+            JobStatus.TERMINATED,
+            JobStatus.DONE,
+            JobStatus.RAISED_EXCEPTION
         ]:
             if not self.thread:
-                return 'waiting'
+                return JobStatus.WAITING
             elif not self.thread.is_alive():
                 self._set_final_status()
         return self._status
@@ -156,21 +155,25 @@ class Job:
         self._status = status
 
     def run_thread(self) -> None:
-        thr = KThread(target=self.do_func, args=self.args, kwargs=self.kwargs)
+        thread_object = KThread(
+            target=self.do_func,
+            args=self.args,
+            kwargs=self.kwargs
+        )
         if self.max_working_time:
             self._timer = Timer(self.max_working_time, self.terminate_job)
             self._timer.start()
-        thr.start()
-        self.thread = thr
-        self.status = 'working'
+        thread_object.start()
+        self.thread = thread_object
+        self.status = JobStatus.WORKING
         logger.info(
-            'Status of job has changed :%s, %s' % (self.name, self._status)
+            f'Status of job has changed : {self.name}, {self._status}'
         )
 
     def restart(self) -> None:
         self.tries -= 1
         logger.info(
-            'Restart of %s' % self.name
+            f'Restart of {self.name}'
         )
         if not self.result_queue.empty():
             self.result_queue.get()

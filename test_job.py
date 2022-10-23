@@ -1,6 +1,8 @@
+import datetime as dt
 import time
 from datetime import datetime
-import datetime as dt
+
+from enums import JobStatus
 
 
 def test_name_gen(name_generator):
@@ -37,28 +39,28 @@ def test_count_datetime_from_str(one_sec_job):
 
 def test_run_job(one_sec_job):
     one_sec_job.run_thread()
-    assert one_sec_job.status == 'working'
+    assert one_sec_job.status == JobStatus.WORKING
 
 
 def test_finish_job(one_sec_job):
     one_sec_job.run_thread()
     time.sleep(1.2)
-    assert one_sec_job.status == 'done'
+    assert one_sec_job.status == JobStatus.DONE
 
 
 def test_exception_in_job(job_with_exception):
     job_with_exception.run_thread()
     time.sleep(0.3)
-    assert job_with_exception.status == 'raised_exception'
+    assert job_with_exception.status == JobStatus.RAISED_EXCEPTION
 
 
 def test_can_not_set_status(one_sec_job):
-    one_sec_job.status = 'failed'
-    assert one_sec_job.status == 'waiting'
+    one_sec_job.status = JobStatus.FAILED
+    assert one_sec_job.status == JobStatus.WAITING
 
 
 def test_get_status(one_sec_job):
-    assert one_sec_job.status == 'waiting'
+    assert one_sec_job.status == JobStatus.WAITING
 
 
 def test_restart_job(job_with_two_tries):
@@ -75,10 +77,10 @@ def test_restart_job(job_with_two_tries):
 def test_terminate_job(one_sec_job):
     one_sec_job.run_thread()
     one_sec_job.terminate_job()
-    assert one_sec_job.status == 'terminated'
+    assert one_sec_job.status == JobStatus.TERMINATED
 
 
 def test_job_for_timeout(time_out_job):
     time_out_job.run_thread()
     time.sleep(1.2)
-    assert time_out_job.status == 'terminated'
+    assert time_out_job.status == JobStatus.TERMINATED

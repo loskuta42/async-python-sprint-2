@@ -1,17 +1,17 @@
-import json
-import time
 import datetime as dt
+import json
+import os
+import time
 from datetime import datetime
 from queue import Queue
-from threading import Lock
 from typing import Iterable
 from urllib.request import urlopen
 
 import pytest
-import os
 
 from job import Job, name_gen
 from scheduler import Scheduler
+
 
 LIST_TO_FILE = ['All work and no play makes Jack a dull boy.'] * 10
 

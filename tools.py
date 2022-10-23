@@ -1,9 +1,8 @@
 import functools
+import sys
 from queue import Queue
-
 from threading import Thread
 from typing import Iterable
-import sys
 
 
 class CyclicIterator:

@@ -1,13 +1,15 @@
 import os
 import pickle
 import time
+
 from conftest import func_with_exception
+from enums import JobStatus
 
 
-def test_run_job_in_pool_coro(default_scheduler_for_5_jobs, one_sec_job):
+def test_run_job_in_pool(default_scheduler_for_5_jobs, one_sec_job):
     default_scheduler_for_5_jobs.run_job_in_pool.send((0, one_sec_job))
     assert default_scheduler_for_5_jobs.pool[0] is one_sec_job
-    assert one_sec_job.status == 'working'
+    assert one_sec_job.status == JobStatus.WORKING
 
 
 def test_get_job_from_wait_list_generator(
@@ -43,7 +45,7 @@ def test_prepare_job_kwargs_method(
         job_attrs_for_recreate,
 ):
     extra_attrs = {
-        'status': 'done',
+        'status': JobStatus.DONE,
         'pool_size': 4
     }
     test_attrs = job_attrs_for_recreate.copy()
