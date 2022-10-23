@@ -19,7 +19,6 @@ with open('logging_config.yaml', 'r') as f:
 
 logger = logging.getLogger(__name__)
 
-
 ATTRIBUTE_OF_JOB_TO_FILE = [
     'target',
     'name',
